@@ -55,24 +55,28 @@ void triggerLDAC() {
 }
 
 void loop() {
-  // Generate a slow sine wave (breathing LED effect)
-  // This validates the asynchronous ~LDAC timing and tests your LFO math
-  
   static uint32_t t = 0;
-  float phase = (float)t / 1000.0; // Time in seconds
-  
-  // Calculate sine wave from 0.0 to 1.0
-  float sineValue = (sin(phase) + 1.0) / 2.0; 
-  
-  // Scale to 16-bit DAC range (0 to 65535)
-  uint16_t dacValue = (uint16_t)(sineValue * 65535.0);
+  float timeSec = (float)t / 1000.0;
 
-  // 1. Pre-load the data into DAC Channel A (0)
-  writeDACRegister(0, dacValue);
+  // 1. Pre-load data into ALL 8 DAC Channels (0 through 7)
+  for (byte ch = 0; ch < 8; ch++) {
+    // Offset each channel's phase by 1/8th of a circle (PI / 4)
+    // The '2.0 *' sets the speed of the wave
+    float phase = (timeSec * 2.0) + (ch * PI / 4.0); 
+    
+    // Calculate sine wave from 0.0 to 1.0
+    float sineValue = (sin(phase) + 1.0) / 2.0; 
+    
+    // Scale to 16-bit DAC range
+    uint16_t dacValue = (uint16_t)(sineValue * 65535.0);
+
+    // Send to the input register (Analog outputs do NOT change yet)
+    writeDACRegister(ch, dacValue);
+  }
   
-  // 2. Fire the hardware trigger to update the LED!
+  // 2. Fire the hardware trigger! All 8 LEDs update simultaneously.
   triggerLDAC();
 
-  t += 10;
-  delay(10); // Run loop roughly 100 times per second
+  t += 20;
+  delay(20); // Run at ~50 Hz for a smooth visual frame rate
 }
